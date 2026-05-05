@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls \"C:\\\\Users\\\\icy\\\\.claude\\\\skills\\\\ui-ux-pro-max\" 2>&1)",
+      "Read(//c/Users/icy/.claude/skills/ui-ux-pro-max/**)",
+      "Read(//c/Users/icy/.claude/**)",
+      "Bash(rm -rf \"C:\\\\Users\\\\icy\\\\.claude\\\\skills\\\\ui-ux-pro-max\" && ls \"C:\\\\Users\\\\icy\\\\.claude\\\\skills\" | grep -i ui 2>&1; echo \"done\")"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\icy\\.claude\\skills\\ui-ux-pro-max"
+    ]
+  }
+}

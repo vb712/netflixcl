@@ -1,0 +1,1397 @@
+/* =========================================================================
+   Netflix-inspired cinematic player
+   - index.html : profile selection + N loader overlay
+   - player.html: per-season slideshow + audio
+   ========================================================================= */
+
+/* ---------- Design Tokens ---------- */
+:root {
+  /* Brand */
+  --nf-black:      #000000;
+  --nf-surface:    #141414;
+  --nf-surface-2:  #1f1f1f;
+  --nf-red:        #e50914;
+  --nf-red-deep:   #b81d24;
+  --nf-text:       #ffffff;
+  --nf-text-dim:   #b3b3b3;
+  --nf-text-mute:  #808080;
+  --nf-border:     rgba(255,255,255,.18);
+
+  /* Motion — Material's "emphasized" curves feel premium */
+  --ease-out:   cubic-bezier(.16, 1, .3, 1);
+  --ease-in:    cubic-bezier(.7, 0, .84, 0);
+  --ease-snap:  cubic-bezier(.34, 1.56, .64, 1);
+  --ease-cine:  cubic-bezier(.65, 0, .35, 1);
+
+  /* Type */
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-display: "Bebas Neue", "Inter", system-ui, sans-serif;
+
+  /* Layout */
+  --gutter: clamp(16px, 4vw, 48px);
+
+  /* Per-season accents (overridden via [data-season] on body) */
+  --season-accent: var(--nf-red);
+  --season-grad-1: rgba(229,9,20,.0);
+  --season-grad-2: rgba(0,0,0,.85);
+  --season-tint:   none;
+  --season-saturate: 1;
+  --season-contrast: 1;
+}
+
+/* ---------- Reset ---------- */
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--nf-black);
+  color: var(--nf-text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+}
+
+img, video { display: block; max-width: 100%; }
+
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+
+ul { list-style: none; padding: 0; margin: 0; }
+
+a { color: inherit; text-decoration: none; }
+
+:focus-visible {
+  outline: 2px solid var(--nf-text);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* ===========================================================================
+   SPLASH — Netflix logo animation on page load
+   =========================================================================== */
+.splash {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 1000;
+  background: #000;
+  pointer-events: none;
+}
+.splash.is-done {
+  animation: splashOut .55s var(--ease-in) forwards;
+}
+@keyframes splashOut {
+  to { opacity: 0; transform: scale(1.04); }
+}
+
+/* ===========================================================================
+   LANDING — "Who's watching?"
+   =========================================================================== */
+body[data-page="landing"] {
+  min-height: 100vh;
+  background: var(--nf-black);
+  display: flex;
+  flex-direction: column;
+}
+
+.brand {
+  padding: 24px var(--gutter);
+}
+
+.brand__logo {
+  font-family: var(--font-display);
+  font-size: clamp(22px, 2.4vw, 32px);
+  letter-spacing: .14em;
+  color: var(--nf-red);
+  font-weight: 400;
+  text-shadow: 0 0 24px rgba(229,9,20,.35);
+}
+
+.landing {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 56px;
+  padding: 32px var(--gutter) 80px;
+  animation: landingIn .9s var(--ease-out) both;
+}
+
+@keyframes landingIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.landing__title {
+  margin: 0;
+  font-weight: 300;
+  font-size: clamp(2rem, 5.2vw, 4.5rem);
+  letter-spacing: -0.02em;
+  color: #e5e5e5;
+  text-align: center;
+}
+
+/* ---------- Profile cards ---------- */
+.profiles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(120px, 200px));
+  gap: clamp(16px, 3vw, 40px);
+  align-items: start;
+  justify-content: center;
+}
+
+@media (max-width: 720px) {
+  .profiles { grid-template-columns: repeat(2, minmax(120px, 200px)); }
+}
+
+.profile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  cursor: pointer;
+  transition: transform .25s var(--ease-out);
+  background: none;
+  padding: 0;
+}
+
+.profile__thumb {
+  position: relative;
+  width: clamp(120px, 16vw, 200px);
+  aspect-ratio: 1 / 1;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--nf-surface-2);
+  background-size: cover;
+  background-position: center;
+  outline: 2px solid transparent;
+  outline-offset: 4px;
+  transition:
+    transform .28s var(--ease-out),
+    outline-color .28s var(--ease-out),
+    box-shadow .35s var(--ease-out),
+    filter .28s var(--ease-out);
+  will-change: transform;
+}
+
+.profile__thumb::after {
+  /* subtle inner edge to lift photo from background */
+  content: "";
+  position: absolute; inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.06);
+  pointer-events: none;
+}
+
+.profile__name {
+  color: var(--nf-text-dim);
+  font-size: 1.1rem;
+  font-weight: 500;
+  letter-spacing: .01em;
+  transition: color .2s var(--ease-out);
+}
+
+/* hover: scale 1.1 + glow + brighten */
+.profile:hover .profile__thumb,
+.profile:focus-visible .profile__thumb {
+  transform: scale(1.1);
+  outline-color: #ffffff;
+  box-shadow:
+    0 0 0 4px rgba(255,255,255,.04),
+    0 18px 40px rgba(229,9,20,.28),
+    0 0 60px rgba(229,9,20,.18);
+  filter: brightness(1.06);
+}
+.profile:hover .profile__name,
+.profile:focus-visible .profile__name {
+  color: #ffffff;
+}
+
+/* selection animation: zoom forward + push everything else away */
+.profile.is-selected {
+  z-index: 10;
+  animation: profilePick .7s var(--ease-snap) forwards;
+}
+.profile.is-selected .profile__thumb {
+  outline-color: #ffffff;
+  box-shadow:
+    0 0 0 6px rgba(255,255,255,.06),
+    0 30px 80px rgba(229,9,20,.45),
+    0 0 120px rgba(229,9,20,.35);
+}
+@keyframes profilePick {
+  0%   { transform: scale(1); }
+  60%  { transform: scale(1.6); }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
+.landing.is-leaving .profile:not(.is-selected) {
+  animation: profilesAway .55s var(--ease-out) forwards;
+}
+@keyframes profilesAway {
+  to { opacity: 0; transform: scale(.9); filter: blur(8px); }
+}
+
+.landing.is-leaving .landing__title,
+.landing.is-leaving .ghost-btn {
+  animation: titleAway .5s var(--ease-out) forwards;
+}
+@keyframes titleAway {
+  to { opacity: 0; transform: translateY(-12px); filter: blur(6px); }
+}
+
+.ghost-btn {
+  font-size: 1rem;
+  letter-spacing: .25em;
+  padding: 12px 22px;
+  color: var(--nf-text-dim);
+  border: 1px solid var(--nf-text-mute);
+  background: transparent;
+  text-transform: uppercase;
+  transition: color .2s, border-color .2s, background .2s;
+  min-height: 44px;
+}
+.ghost-btn:hover {
+  color: var(--nf-text);
+  border-color: var(--nf-text);
+  background: rgba(255,255,255,.04);
+}
+
+/* ===========================================================================
+   LOADER — cinematic N intro (red light bars → colored streaks)
+   3.5s sequence: build → glow → expand
+   =========================================================================== */
+.loader {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  display: grid;
+  place-items: center;
+  z-index: 100;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .45s var(--ease-out);
+}
+.loader.is-active {
+  opacity: 1;
+  pointer-events: auto;
+}
+.loader.is-fading {
+  opacity: 0;
+  transition: opacity .35s var(--ease-in);
+}
+
+.loader__stage {
+  position: relative;
+  width: clamp(220px, 30vw, 360px);
+  height: clamp(220px, 30vw, 360px);
+}
+
+/* Bars: 2 verticals + 1 diagonal forming an abstract "N" */
+.bar {
+  position: absolute;
+  background: linear-gradient(180deg, #ff3b3b 0%, var(--nf-red) 50%, #7a0309 100%);
+  border-radius: 6px;
+  box-shadow:
+    0 0 18px rgba(229,9,20,.85),
+    0 0 40px rgba(229,9,20,.55),
+    0 0 80px rgba(229,9,20,.35);
+  transform-origin: center;
+  opacity: 0;
+}
+
+.bar--left {
+  left: 12%;
+  top: 8%;
+  width: 14px;
+  height: 84%;
+  animation: barLeft 3.5s var(--ease-out) forwards;
+}
+.bar--right {
+  right: 12%;
+  top: 8%;
+  width: 14px;
+  height: 84%;
+  animation: barRight 3.5s var(--ease-out) forwards;
+}
+.bar--diag {
+  left: 50%;
+  top: 50%;
+  width: 18px;
+  height: 110%;
+  border-radius: 8px;
+  transform: translate(-50%, -50%) rotate(28deg) scaleY(0);
+  background: linear-gradient(180deg, #ff5a5a 0%, var(--nf-red) 60%, #5a0207 100%);
+  box-shadow:
+    0 0 24px rgba(229,9,20,.95),
+    0 0 60px rgba(229,9,20,.6),
+    0 0 120px rgba(229,9,20,.35);
+  animation: barDiag 3.5s var(--ease-out) forwards;
+}
+
+@keyframes barLeft {
+  0%   { opacity: 0; transform: translateY(-40px) scaleY(0); }
+  18%  { opacity: 1; transform: translateY(0) scaleY(1); }
+  55%  { transform: translateY(0) scaleY(1) scaleX(1.05); filter: brightness(1.4); }
+  78%  { transform: translateY(0) scaleY(1); filter: brightness(1.1); }
+  100% { transform: translateY(0) scaleY(1.4) translateX(-180px); opacity: 0; filter: brightness(1.6) hue-rotate(-25deg); }
+}
+@keyframes barRight {
+  0%   { opacity: 0; transform: translateY(40px) scaleY(0); }
+  18%  { opacity: 1; transform: translateY(0) scaleY(1); }
+  55%  { transform: translateY(0) scaleY(1) scaleX(1.05); filter: brightness(1.4); }
+  78%  { transform: translateY(0) scaleY(1); filter: brightness(1.1); }
+  100% { transform: translateY(0) scaleY(1.4) translateX(180px); opacity: 0; filter: brightness(1.6) hue-rotate(25deg); }
+}
+@keyframes barDiag {
+  0%   { opacity: 0; transform: translate(-50%,-50%) rotate(28deg) scaleY(0); }
+  22%  { opacity: 1; transform: translate(-50%,-50%) rotate(28deg) scaleY(1); }
+  55%  { transform: translate(-50%,-50%) rotate(28deg) scaleY(1.04); filter: brightness(1.5); }
+  78%  { transform: translate(-50%,-50%) rotate(28deg) scaleY(1); filter: brightness(1.2); }
+  100% { transform: translate(-50%,-50%) rotate(28deg) scaleY(1.6); opacity: 0; filter: brightness(1.8) hue-rotate(40deg); }
+}
+
+/* Streaks: thin colorful rays that explode outward in the final phase */
+.streak {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 4px;
+  height: 0;
+  border-radius: 4px;
+  transform-origin: bottom center;
+  opacity: 0;
+  filter: blur(.4px);
+}
+.streak--1 { background: linear-gradient(180deg,#ffd166,#ff006e); animation: streak 3.5s var(--ease-out) forwards;        --rot:  -68deg; }
+.streak--2 { background: linear-gradient(180deg,#ff006e,#8338ec); animation: streak 3.5s var(--ease-out) .05s forwards;  --rot:  -28deg; }
+.streak--3 { background: linear-gradient(180deg,#3a86ff,#00f5d4); animation: streak 3.5s var(--ease-out) .10s forwards;  --rot:   18deg; }
+.streak--4 { background: linear-gradient(180deg,#00f5d4,#fb5607); animation: streak 3.5s var(--ease-out) .15s forwards;  --rot:   58deg; }
+.streak--5 { background: linear-gradient(180deg,#ff006e,#ffd166); animation: streak 3.5s var(--ease-out) .20s forwards;  --rot:   90deg; }
+
+@keyframes streak {
+  0%, 70% {
+    opacity: 0;
+    height: 0;
+    transform: translate(-50%, -50%) rotate(var(--rot)) translateY(0);
+  }
+  78% {
+    opacity: 1;
+    height: 30px;
+  }
+  100% {
+    opacity: 0;
+    height: 320px;
+    transform: translate(-50%, -50%) rotate(var(--rot)) translateY(-180px);
+    filter: blur(2px);
+  }
+}
+
+/* End-of-loader white flash → into player */
+.loader__flash {
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  opacity: 0;
+  pointer-events: none;
+}
+.loader.is-active .loader__flash {
+  animation: loaderFlash 3.5s var(--ease-out) forwards;
+}
+@keyframes loaderFlash {
+  0%, 80% { opacity: 0; }
+  88%     { opacity: .9; }
+  100%    { opacity: 0; }
+}
+
+/* Reduced motion: collapse loader to a quick fade */
+@media (prefers-reduced-motion: reduce) {
+  .bar, .streak, .loader__flash { animation-duration: 1s !important; }
+  .profile.is-selected { animation-duration: .3s; }
+  .landing.is-leaving .profile:not(.is-selected),
+  .landing.is-leaving .landing__title,
+  .landing.is-leaving .ghost-btn { animation-duration: .3s; }
+}
+
+/* ===========================================================================
+   PLAYER PAGE
+   =========================================================================== */
+body[data-page="player"] {
+  min-height: 100vh;
+  background: #000;
+  overflow: hidden;
+  animation: pageIn .9s var(--ease-out) both;
+}
+body[data-page="player"].is-leaving {
+  animation: pageOut .55s var(--ease-in) forwards;
+}
+@keyframes pageIn {
+  from { opacity: 0; filter: blur(18px); transform: scale(1.04); }
+  to   { opacity: 1; filter: blur(0);    transform: scale(1); }
+}
+@keyframes pageOut {
+  from { opacity: 1; filter: blur(0);    transform: scale(1); }
+  to   { opacity: 0; filter: blur(20px); transform: scale(.97); }
+}
+
+.player {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: #000;
+}
+
+.stage {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: #000;
+}
+
+/* Each slide is a layer; the actual media (img/video) sits inside.
+   We animate the wrapper (opacity) and the foreground (blur/scale)
+   independently for a premium crossfade. */
+.slide {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  overflow: hidden;
+  transform: translateZ(0);
+  pointer-events: none;
+  backface-visibility: hidden;
+  /* Limit paint area for perf — slides won't bleed paint outside their box. */
+  contain: paint;
+}
+
+/* Promote to its own layer ONLY while it's visible/transitioning, so
+   the GPU isn't holding 14 idle compositor layers in memory. */
+.slide.is-active,
+.slide.is-leaving {
+  will-change: transform, opacity, filter;
+}
+
+.slide.is-active { pointer-events: auto; }
+
+/* Mobile-first: edge-to-edge cover. */
+.slide img,
+.slide video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  /* Crisp rendering across browsers */
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: high-quality;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+}
+
+/* Per-season cinematic grading on the foreground media only. The
+   backdrop has its own blur+brightness chain and doesn't need grading. */
+.slide img.slide__fg,
+.slide video {
+  filter:
+    saturate(var(--season-saturate, 1))
+    contrast(var(--season-contrast, 1))
+    brightness(var(--season-brightness, 1))
+    sepia(var(--season-sepia, 0))
+    hue-rotate(var(--season-hue, 0deg));
+  scale: 1;
+  transition: scale 160ms var(--ease-out);
+}
+
+/* Beat pulse — the FOREGROUND photo never moves on the beat. The
+   backdrop also stays still; the entire beat visual lives in the
+   .beat-glow strips so the outer letterbox stays clean. */
+
+/* The blurred backdrop is image-only and only used on landscape desktops
+   (portrait phone shots would distort if forced edge-to-edge on a 16:9). */
+.slide__bg { display: none; }
+
+@media (min-width: 900px) and (orientation: landscape) {
+  /* CINEMATIC FRAME — every slide displays inside the SAME 16:9 box,
+     centered on screen. Source media uses object-fit: contain inside
+     that box, so the full image/video is always visible (with
+     internal bars if needed). The frame size is constant across all
+     slides regardless of source aspect, giving the consistent
+     "movie" feel the user asked for. */
+  .slide img.slide__fg,
+  .slide video {
+    inset: auto;
+    top: 50%;
+    left: 50%;
+    width: min(90vw, calc(86vh * 16 / 9));
+    height: min(86vh, calc(90vw * 9 / 16));
+    transform: translate(-50%, -50%) translateZ(0);
+    object-fit: contain;
+    z-index: 1;
+    border-radius: 4px;
+    box-shadow:
+      0 30px 80px rgba(0, 0, 0, .55),
+      0 0 0 1px rgba(255, 255, 255, .04);
+    background: #000;
+  }
+
+  /* Blurred copy fills the area around the frame. Blur radius kept
+     modest (32px) for GPU cost — the visual reads the same. */
+  .slide__bg {
+    display: block;
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    filter: blur(32px) saturate(1.25) brightness(.5);
+    transform: scale(1.15);
+    pointer-events: none;
+    z-index: 0;
+    image-rendering: auto;
+  }
+
+  /* On desktop the foreground must show the FULL frame at all times —
+     so we strip the per-season transform animations (Ken Burns / push /
+     shake / drift) and keep only the opacity fade. The fade duration
+     still carries each season's personality. The blurred backdrop is
+     free to drift, since it's decorative and clipped anyway. */
+  body[data-season="summer"] .slide.is-active {
+    animation: deskFadeIn 1.4s var(--ease-out) forwards;
+  }
+  body[data-season="summer"] .slide.is-leaving {
+    animation: deskFadeOut 1.4s var(--ease-out) forwards;
+  }
+  /* Fall is paced at ~1 cut per beat (698ms) so the scale-and-blur enter
+     animation overshoots and re-focuses on every slide — feels jittery.
+     Linear opacity-only crossfade keeps the cuts crisp and uniform. */
+  body[data-season="fall"] .slide.is-active {
+    animation: deskFadeIn .26s linear forwards;
+  }
+  body[data-season="fall"] .slide.is-leaving {
+    animation: deskFadeOut .22s linear forwards;
+  }
+  body[data-season="winter"] .slide.is-active {
+    animation: deskFadeIn .25s var(--ease-snap) forwards;
+  }
+  body[data-season="winter"] .slide.is-leaving {
+    animation: deskFadeOut .15s var(--ease-in) forwards;
+  }
+  body[data-season="spring"] .slide.is-active {
+    animation: deskFadeIn .12s linear forwards;
+  }
+  body[data-season="spring"] .slide.is-leaving {
+    animation: deskFadeOut .08s linear forwards;
+  }
+
+  /* Backdrop drift (decorative, may be cropped) — keeps the screen alive
+     while the foreground is held static. */
+  .slide.is-active .slide__bg {
+    animation: bgDrift var(--slide-duration, 5500ms) linear forwards;
+  }
+  @keyframes bgDrift {
+    from { transform: scale(1.15) translate(0, 0); }
+    to   { transform: scale(1.22) translate(1%, 1%); }
+  }
+
+  /* PREMIUM POLISH — the foreground frame eases in with a soft blur
+     and a barely-perceptible scale, and eases out with a heavier blur.
+     The frame box stays put so the photo never crops. */
+  body[data-season="summer"] .slide.is-active .slide__fg,
+  body[data-season="summer"] .slide.is-active video {
+    animation: fgEnterSlow 1.5s var(--ease-out) forwards;
+  }
+  body[data-season="summer"] .slide.is-leaving .slide__fg,
+  body[data-season="summer"] .slide.is-leaving video {
+    animation: fgExitSoft 1.2s var(--ease-out) forwards;
+  }
+
+  /* Foreground stays still on Fall in fast mode — clean snap cuts. */
+  body[data-season="fall"] .slide.is-active .slide__fg,
+  body[data-season="fall"] .slide.is-active video,
+  body[data-season="fall"] .slide.is-leaving .slide__fg,
+  body[data-season="fall"] .slide.is-leaving video {
+    animation: none;
+  }
+
+  /* SLOW PHASE — first ~6s of Fall audio, before the beat drops.
+     Switches everything to long dreamy crossfades with the original
+     blur+scale enter so the intro feels ambient. JS adds .is-slow-phase
+     to <body> while audio.currentTime sits in a tempoPhase window. */
+  body[data-season="fall"].is-slow-phase .slide.is-active {
+    animation: deskFadeIn 1.4s var(--ease-out) forwards;
+  }
+  body[data-season="fall"].is-slow-phase .slide.is-leaving {
+    animation: deskFadeOut 1.2s var(--ease-out) forwards;
+  }
+  body[data-season="fall"].is-slow-phase .slide.is-active .slide__fg,
+  body[data-season="fall"].is-slow-phase .slide.is-active video {
+    animation: fgEnterSlow 1.5s var(--ease-out) forwards;
+  }
+  body[data-season="fall"].is-slow-phase .slide.is-leaving .slide__fg,
+  body[data-season="fall"].is-slow-phase .slide.is-leaving video {
+    animation: fgExitSoft 1.2s var(--ease-out) forwards;
+  }
+
+  body[data-season="winter"] .slide.is-active .slide__fg,
+  body[data-season="winter"] .slide.is-active video {
+    animation: fgEnterSnap .35s var(--ease-snap) forwards;
+  }
+  body[data-season="winter"] .slide.is-leaving .slide__fg,
+  body[data-season="winter"] .slide.is-leaving video {
+    animation: fgExitSoft .25s var(--ease-in) forwards;
+  }
+
+  body[data-season="spring"] .slide.is-active .slide__fg,
+  body[data-season="spring"] .slide.is-active video {
+    animation: fgEnterBeat .18s linear forwards;
+  }
+  body[data-season="spring"] .slide.is-leaving .slide__fg,
+  body[data-season="spring"] .slide.is-leaving video {
+    animation: fgExitSoft .12s linear forwards;
+  }
+}
+
+@keyframes deskFadeIn  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes deskFadeOut { from { opacity: 1; } to { opacity: 0; } }
+
+/* Foreground (frame box) enter/exit — uses the centering offsets so the
+   frame stays centered while it scales/blurs. */
+@keyframes fgEnterSlow {
+  from { transform: translate(-50%, -50%) scale(1.025) translateZ(0); filter: blur(8px); }
+  to   { transform: translate(-50%, -50%) scale(1)     translateZ(0); filter: blur(0); }
+}
+@keyframes fgEnterSnap {
+  from { transform: translate(-50%, -50%) scale(1.015) translateZ(0); filter: blur(3px); }
+  to   { transform: translate(-50%, -50%) scale(1)     translateZ(0); filter: blur(0); }
+}
+@keyframes fgEnterBeat {
+  from { transform: translate(-50%, -50%) scale(1.04)  translateZ(0); filter: blur(2px); }
+  to   { transform: translate(-50%, -50%) scale(1)     translateZ(0); filter: blur(0); }
+}
+@keyframes fgExitSoft {
+  from { transform: translate(-50%, -50%) scale(1)     translateZ(0); filter: blur(0); }
+  to   { transform: translate(-50%, -50%) scale(.985)  translateZ(0); filter: blur(10px); }
+}
+
+/* ---------- Per-season slide motion ---------- */
+
+/* Summer: long crossfade (1.4s) + slow Ken Burns zoom over slideMs */
+body[data-season="summer"] .slide.is-active {
+  animation:
+    sFadeIn 1.4s var(--ease-out) forwards,
+    sKenburns var(--slide-duration, 5500ms) linear forwards;
+}
+body[data-season="summer"] .slide.is-leaving {
+  animation: sFadeOut 1.4s var(--ease-out) forwards;
+}
+@keyframes sFadeIn  { from { opacity: 0; transform: scale(1.02);} to { opacity: 1; transform: scale(1.05);} }
+@keyframes sFadeOut { from { opacity: 1; } to { opacity: 0; } }
+@keyframes sKenburns {
+  from { transform: scale(1.04) translate(-1%, -1%); }
+  to   { transform: scale(1.18) translate(2%, 2%); }
+}
+
+/* Fall: soft fade with subtle drift, golden warmth */
+body[data-season="fall"] .slide.is-active {
+  animation:
+    fFadeIn 1.6s var(--ease-out) forwards,
+    fDrift var(--slide-duration, 4000ms) linear forwards;
+}
+body[data-season="fall"] .slide.is-leaving {
+  animation: fFadeOut 1.6s var(--ease-out) forwards;
+}
+@keyframes fFadeIn  { from { opacity: 0; transform: scale(1.06);} to { opacity: 1; transform: scale(1.03);} }
+@keyframes fFadeOut { from { opacity: 1; } to { opacity: 0; } }
+@keyframes fDrift {
+  from { transform: scale(1.04) translate(0, 0); }
+  to   { transform: scale(1.10) translate(-1.5%, -1%); }
+}
+
+/* Winter: short, sharp cuts with high contrast */
+body[data-season="winter"] .slide.is-active {
+  animation:
+    wCut .25s var(--ease-snap) forwards,
+    wPush var(--slide-duration, 2200ms) linear forwards;
+}
+body[data-season="winter"] .slide.is-leaving {
+  animation: wCutOut .15s var(--ease-in) forwards;
+}
+@keyframes wCut    { from { opacity: 0; transform: scale(1.03);} to { opacity: 1; transform: scale(1);} }
+@keyframes wCutOut { from { opacity: 1; } to { opacity: 0; } }
+@keyframes wPush {
+  from { transform: scale(1) translate(0, 0); }
+  to   { transform: scale(1.08) translate(1%, 0); }
+}
+
+/* Spring: instant cuts + brief flash, beat-style */
+body[data-season="spring"] .slide.is-active {
+  animation: spIn .12s linear forwards, spShake var(--slide-duration, 700ms) linear forwards;
+}
+body[data-season="spring"] .slide.is-leaving {
+  animation: spOut .08s linear forwards;
+}
+@keyframes spIn  { from { opacity: 0; transform: scale(1.05);} to { opacity: 1; transform: scale(1);} }
+@keyframes spOut { from { opacity: 1; } to { opacity: 0; } }
+@keyframes spShake {
+  0%   { transform: scale(1.00); }
+  50%  { transform: scale(1.02); }
+  100% { transform: scale(1.04); }
+}
+
+/* Beat flash overlay — short fixed snap (like before), with strength
+   controlled per-season. */
+.beat-flash {
+  position: absolute;
+  inset: 0;
+  background: var(--beat-flash-color, #fff);
+  opacity: 0;
+  z-index: 3;
+  pointer-events: none;
+  mix-blend-mode: overlay;
+}
+.beat-flash.is-pulse {
+  animation: beatPulse .18s ease-out;
+}
+@keyframes beatPulse {
+  0%   { opacity: 0; }
+  30%  { opacity: var(--beat-flash-strength, .08); }
+  100% { opacity: 0; }
+}
+
+/* Beat edge-glow — four strips sized exactly to the letterbox so the
+   halo physically can't extend over the photo. Gradients run from
+   TRANSPARENT at the outer (viewport) edge → SOLID at the inner
+   (frame) edge, so the brightest band sits right against the cinema
+   frame and falls off outward. NCS-style halo. Hidden on mobile. */
+.beat-glow { display: none; }
+
+@media (min-width: 900px) and (orientation: landscape) {
+  .beat-glow {
+    display: block;
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+    pointer-events: none;
+    opacity: var(--beat-glow-base, .04);
+    transition: opacity 1.6s cubic-bezier(.4, 0, .2, 1);
+  }
+  .beat-glow.is-pulse {
+    animation: beatGlow 1.6s cubic-bezier(.4, 0, .2, 1);
+  }
+
+  .beat-glow__strip {
+    position: absolute;
+    pointer-events: none;
+  }
+  /* Side strips fill the L/R letterbox bars exactly. */
+  .beat-glow__strip--left,
+  .beat-glow__strip--right {
+    top: 0; bottom: 0;
+    width: calc(50vw - min(45vw, calc(43vh * 16 / 9)));
+  }
+  /* Each gradient is SOLID at the viewport edge and fades to TRANSPARENT
+     toward the cinema frame. So the brightest band sits at the very
+     outer black box (corners and edges) and dies before reaching the
+     frame — no bleed inward. */
+  .beat-glow__strip--left {
+    left: 0;
+    background: linear-gradient(to right,
+      var(--season-accent),
+      color-mix(in srgb, var(--season-accent) 0%, transparent));
+  }
+  .beat-glow__strip--right {
+    right: 0;
+    background: linear-gradient(to left,
+      var(--season-accent),
+      color-mix(in srgb, var(--season-accent) 0%, transparent));
+  }
+  /* Top & bottom strips run the full width so the halo wraps the
+     whole perimeter. NCS halos do overlap at the corners — that's
+     what gives the soft wrap-around feel. */
+  .beat-glow__strip--top,
+  .beat-glow__strip--bottom {
+    left: 0;
+    right: 0;
+    height: calc(50vh - min(43vh, calc(45vw * 9 / 16)));
+  }
+  .beat-glow__strip--top {
+    top: 0;
+    background: linear-gradient(to bottom,
+      var(--season-accent),
+      color-mix(in srgb, var(--season-accent) 0%, transparent));
+  }
+  .beat-glow__strip--bottom {
+    bottom: 0;
+    background: linear-gradient(to top,
+      var(--season-accent),
+      color-mix(in srgb, var(--season-accent) 0%, transparent));
+  }
+}
+
+@keyframes beatGlow {
+  0%   { opacity: var(--beat-glow-base, .04); }
+  40%  { opacity: var(--beat-glow-strength, .10); }
+  100% { opacity: var(--beat-glow-base, .04); }
+}
+
+/* ---------- Vignette + gradient overlay ---------- */
+/* Pure black-only vignette — no per-season tint here, since the
+   tint covered the whole viewport (including over the photo) and
+   read as a "glow inside the frame". The seasonal accent now lives
+   exclusively on the .beat-glow strips in the outer letterbox. */
+.vignette {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 50% 42%, transparent 38%, rgba(0,0,0,.40) 75%, rgba(0,0,0,.78) 100%),
+    linear-gradient(180deg, rgba(0,0,0,.70) 0%, rgba(0,0,0,0) 26%, rgba(0,0,0,0) 58%, rgba(0,0,0,.92) 100%);
+}
+
+/* ---------- Cinematic grain ---------- */
+.grain {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  opacity: .09;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240' viewBox='0 0 240 240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .85 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  background-size: 240px 240px;
+  animation: grainShift 1.6s steps(6) infinite;
+}
+@keyframes grainShift {
+  0%   { transform: translate(0, 0); }
+  16%  { transform: translate(-2%, 1%); }
+  33%  { transform: translate(1%, -2%); }
+  50%  { transform: translate(-1%, 2%); }
+  66%  { transform: translate(2%, -1%); }
+  83%  { transform: translate(-2%, -1%); }
+  100% { transform: translate(0, 0); }
+}
+
+/* ---------- Chrome wrapper (top bar + center cluster + progress + bottom bar) ---------- */
+.chrome {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .35s var(--ease-out);
+}
+.chrome > * { pointer-events: auto; }
+.chrome[aria-hidden="false"] { opacity: 1; }
+
+.player__top {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 16px;
+  padding: 22px var(--gutter);
+  background: linear-gradient(180deg, rgba(0,0,0,.65) 0%, rgba(0,0,0,0) 100%);
+}
+
+.iconbtn {
+  display: inline-grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(0,0,0,.4);
+  color: #fff;
+  border: 1px solid transparent;
+  transition: background .2s var(--ease-out), transform .2s var(--ease-out), border-color .2s var(--ease-out);
+}
+.iconbtn svg { width: 22px; height: 22px; }
+.iconbtn:hover {
+  background: rgba(40,40,40,.85);
+  transform: scale(1.06);
+  border-color: rgba(255,255,255,.25);
+}
+.back:hover { transform: translateX(-2px) scale(1.02); }
+
+.iconbtn .i-off { display: none; }
+.iconbtn[data-muted="true"] .i-on  { display: none; }
+.iconbtn[data-muted="true"] .i-off { display: block; }
+.iconbtn[data-on="true"] .i-on  { display: none; }
+.iconbtn[data-on="true"] .i-off { display: block; }
+
+.player__top-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  justify-self: end;
+}
+
+.player__title {
+  margin: 0;
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 3.4vw, 2.6rem);
+  letter-spacing: .08em;
+  font-weight: 400;
+  text-transform: uppercase;
+  color: #fff;
+  text-shadow:
+    0 2px 16px rgba(0,0,0,.7),
+    0 0 40px color-mix(in srgb, var(--season-accent) 35%, transparent);
+  animation: titleIn .9s var(--ease-out) .1s both;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.player__title .ep {
+  font-family: var(--font-sans);
+  font-size: .55em;
+  letter-spacing: .14em;
+  font-weight: 700;
+  opacity: .82;
+  margin-right: .6em;
+  vertical-align: .12em;
+}
+
+@keyframes titleIn {
+  from { opacity: 0; letter-spacing: .25em; transform: translateY(-8px); filter: blur(6px); }
+  to   { opacity: 1; letter-spacing: .08em; transform: none;          filter: blur(0); }
+}
+
+/* ---------- Center cluster (Netflix-style ⏮10  ⏯  ⏭10) ---------- */
+.center-cluster {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  gap: clamp(48px, 9vw, 110px);
+}
+.cc-seek,
+.cc-play {
+  display: inline-grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #fff;
+  background: transparent;
+  transition: background .2s var(--ease-out), transform .2s var(--ease-out);
+}
+.cc-seek {
+  width: clamp(56px, 7vw, 84px);
+  height: clamp(56px, 7vw, 84px);
+}
+.cc-seek svg { width: 100%; height: 100%; }
+.cc-seek:hover {
+  background: rgba(255,255,255,.10);
+  transform: scale(1.08);
+}
+.cc-play {
+  width: clamp(72px, 8vw, 104px);
+  height: clamp(72px, 8vw, 104px);
+  background: rgba(0, 0, 0, .15);
+  border: 2px solid rgba(255,255,255,.25);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 12px 40px rgba(0,0,0,.45),
+              0 0 0 0 color-mix(in srgb, var(--season-accent) 50%, transparent);
+  animation: ccPulse 2.6s ease-in-out infinite;
+}
+.cc-play svg { width: 56%; height: 56%; }
+.cc-play:hover {
+  background: rgba(255,255,255,.18);
+  transform: scale(1.06);
+  border-color: rgba(255,255,255,.45);
+}
+.cc-play[data-paused="true"] .i-on  { display: none; }
+.cc-play[data-paused="true"] .i-off { display: block; }
+@keyframes ccPulse {
+  0%, 100% { box-shadow: 0 12px 40px rgba(0,0,0,.45), 0 0 0 color-mix(in srgb, var(--season-accent) 0%,  transparent); }
+  50%      { box-shadow: 0 12px 40px rgba(0,0,0,.45), 0 0 60px color-mix(in srgb, var(--season-accent) 45%, transparent); }
+}
+
+/* ---------- Progress bar ---------- */
+.progress {
+  position: absolute;
+  left: var(--gutter);
+  right: var(--gutter);
+  bottom: clamp(82px, 10vh, 120px);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.progress__track {
+  flex: 1;
+  height: 4px;
+  background: rgba(255,255,255,.22);
+  border-radius: 2px;
+  position: relative;
+  pointer-events: none;
+}
+.progress__fill {
+  position: absolute;
+  top: 0; bottom: 0; left: 0;
+  width: 0;
+  background: var(--season-accent, var(--nf-red));
+  border-radius: inherit;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--season-accent) 55%, transparent);
+  transition: width .25s linear;
+}
+.progress__time {
+  font-variant-numeric: tabular-nums;
+  font-size: .95rem;
+  font-weight: 600;
+  color: #fff;
+  text-shadow: 0 1px 6px rgba(0,0,0,.7);
+  min-width: 56px;
+  text-align: right;
+}
+
+/* ---------- Episodes drawer ---------- */
+.drawer {
+  position: absolute;
+  top: 0; right: 0; bottom: 0;
+  width: min(420px, 90vw);
+  z-index: 8;
+  background: rgba(10,10,10,.92);
+  backdrop-filter: blur(24px) saturate(1.2);
+  -webkit-backdrop-filter: blur(24px) saturate(1.2);
+  border-left: 1px solid rgba(255,255,255,.08);
+  transform: translateX(100%);
+  transition: transform .4s var(--ease-out);
+  display: flex;
+  flex-direction: column;
+}
+.drawer[aria-hidden="false"] { transform: none; }
+.drawer__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 22px 24px 16px;
+}
+.drawer__head h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 1.6rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.drawer__list {
+  flex: 1;
+  overflow: auto;
+  padding: 0 12px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.drawer__item {
+  display: flex;
+  gap: 14px;
+  padding: 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid transparent;
+  color: #fff;
+  text-align: left;
+  transition: background .2s var(--ease-out), border-color .2s var(--ease-out);
+}
+.drawer__item:hover,
+.drawer__item.is-current {
+  background: rgba(255,255,255,.06);
+  border-color: rgba(255,255,255,.12);
+}
+.drawer__item.is-current { border-left: 3px solid var(--nf-red); padding-left: 9px; }
+.drawer__thumb {
+  width: 96px;
+  height: 96px;
+  border-radius: 6px;
+  background-size: cover;
+  background-position: center;
+  flex-shrink: 0;
+  background-color: var(--nf-surface-2);
+}
+.drawer__meta { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.drawer__num { font-size: .8rem; opacity: .6; letter-spacing: .1em; text-transform: uppercase; font-weight: 700; }
+.drawer__name { font-size: 1.1rem; font-weight: 600; }
+.drawer__desc { font-size: .85rem; opacity: .7; line-height: 1.45; }
+
+/* ---------- Center play button ---------- */
+.play-btn {
+  position: absolute;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 30px 16px 24px;
+  background: rgba(255,255,255,.94);
+  color: #000;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 1.05rem;
+  letter-spacing: .02em;
+  min-height: 56px;
+  box-shadow:
+    0 14px 40px rgba(0,0,0,.45),
+    0 0 60px color-mix(in srgb, var(--season-accent) 30%, transparent);
+  transition: transform .2s var(--ease-out), background .2s var(--ease-out), box-shadow .25s var(--ease-out);
+  animation: playPulse 2.4s ease-in-out infinite;
+}
+.play-btn__icon {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+}
+.play-btn__icon svg { width: 28px; height: 28px; }
+.play-btn:hover {
+  background: #fff;
+  transform: translate(-50%, -50%) scale(1.05);
+  box-shadow:
+    0 20px 60px rgba(0,0,0,.55),
+    0 0 90px color-mix(in srgb, var(--season-accent) 50%, transparent);
+}
+@keyframes playPulse {
+  0%, 100% { box-shadow: 0 14px 40px rgba(0,0,0,.45), 0 0 0   color-mix(in srgb, var(--season-accent) 0%,  transparent); }
+  50%      { box-shadow: 0 14px 40px rgba(0,0,0,.45), 0 0 90px color-mix(in srgb, var(--season-accent) 55%, transparent); }
+}
+.play-btn.is-hidden {
+  animation: playLeave .35s var(--ease-in) forwards;
+  pointer-events: none;
+}
+@keyframes playLeave {
+  to { opacity: 0; transform: translate(-50%, -50%) scale(.7); }
+}
+
+/* ---------- Bottom toolbar (Episodes / Audio / Next Episode) ---------- */
+.bottombar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  justify-content: center;
+  gap: clamp(20px, 3vw, 56px);
+  padding: 16px var(--gutter) clamp(20px, 3vh, 36px);
+  background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,.55) 60%, rgba(0,0,0,.92) 100%);
+}
+
+.bb-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 18px;
+  min-height: 44px;
+  border-radius: 4px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: #fff;
+  font-size: 1.02rem;
+  font-weight: 600;
+  letter-spacing: .01em;
+  white-space: nowrap;
+  transition: background .2s var(--ease-out), border-color .2s var(--ease-out), transform .2s var(--ease-out);
+}
+.bb-btn svg { width: 22px; height: 22px; flex-shrink: 0; }
+.bb-btn:hover {
+  background: rgba(255,255,255,.10);
+  border-color: rgba(255,255,255,.22);
+  transform: translateY(-1px);
+}
+.bb-btn--primary {
+  background: rgba(255,255,255,.96);
+  color: #000;
+  border-color: transparent;
+  padding: 10px 22px;
+}
+.bb-btn--primary:hover {
+  background: #fff;
+  transform: translateY(-1px) scale(1.02);
+}
+
+/* ---------- Idle auto-hide ---------- */
+.player.is-idle .chrome { opacity: 0; pointer-events: none; }
+.player.is-idle { cursor: none; }
+
+/* ---------- Per-season palette accents ---------- */
+/* Per-season color grading. Each filter chain leans into the season's mood:
+   Summer → warm peach, Fall → bronze sepia, Winter → cold high-contrast,
+   Spring → vivid hyper-color. */
+body[data-season="summer"] {
+  --season-accent: #ff7a59;
+  --season-tint: linear-gradient(180deg, rgba(255,122,89,.10) 0%, rgba(255,196,148,.05) 55%, rgba(20,0,0,.20) 100%);
+  --season-saturate: 1.18;
+  --season-contrast: 1.06;
+  --season-brightness: 1.03;
+  --season-sepia: .10;
+  --season-hue: 0deg;
+  --beat-flash-strength: .05;
+  --beat-flash-color: #ffd6c2;
+  --beat-glow-base: .05;
+  --beat-glow-strength: .14;
+}
+body[data-season="fall"] {
+  --season-accent: #d4a574;
+  --season-tint: linear-gradient(180deg, rgba(212,165,116,.10) 0%, rgba(107,68,35,.16) 100%);
+  --season-saturate: 1.05;
+  --season-contrast: 1.12;
+  --season-brightness: 0.97;
+  --season-sepia: .18;
+  --season-hue: -8deg;
+  --beat-flash-strength: .04;
+  --beat-flash-color: #f3d9a3;
+  --beat-glow-base: .04;
+  --beat-glow-strength: .12;
+}
+body[data-season="winter"] {
+  --season-accent: #ff1744;
+  --season-tint: linear-gradient(180deg, rgba(20,30,50,.40) 0%, rgba(80,0,20,.18) 60%, rgba(0,0,0,.55) 100%);
+  --season-saturate: 1.10;
+  --season-contrast: 1.30;
+  --season-brightness: 0.92;
+  --season-sepia: 0;
+  --season-hue: -6deg;
+  --beat-flash-strength: .05;
+  --beat-flash-color: #ff5566;
+  --beat-glow-base: .03;
+  --beat-glow-strength: .10;
+}
+body[data-season="spring"] {
+  --season-accent: #00e676;
+  --season-tint: linear-gradient(180deg, rgba(0,230,118,.06) 0%, rgba(255,64,129,.06) 100%);
+  --season-saturate: 1.40;
+  --season-contrast: 1.12;
+  --season-brightness: 1.05;
+  --season-sepia: 0;
+  --season-hue: 6deg;
+  --beat-flash-strength: .08;
+  --beat-flash-color: #ffffff;
+  --beat-glow-base: .035;
+  --beat-glow-strength: .12;
+}
+
+/* ---------- Reduced motion respect (player) ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .slide.is-active,
+  .slide.is-leaving { animation-duration: .3s !important; }
+  .play-btn { animation: none; }
+  .player__title { animation: none; }
+}
+
+/* ---------- Mobile-only landing tweaks (≤720px) ---------- */
+@media (max-width: 720px) {
+  /* Brand is absolutely positioned on phones so the .landing centers
+     in the full viewport instead of "everything below the logo". */
+  body[data-page="landing"] { position: relative; }
+  body[data-page="landing"] .brand {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 2;
+    padding: 14px var(--gutter);
+  }
+  body[data-page="landing"] .brand__logo {
+    font-size: 22px;
+  }
+
+  .landing {
+    gap: clamp(20px, 3.5vh, 32px);
+    padding: clamp(14px, 2.5vh, 20px) var(--gutter) clamp(20px, 3.5vh, 32px);
+    /* Reserve the brand's vertical space so the centered content doesn't
+       sit underneath the logo. */
+    padding-top: clamp(64px, 10vh, 88px);
+  }
+
+  .landing__title {
+    font-size: clamp(1.6rem, 6vw, 2.25rem);
+  }
+
+  .profiles { gap: clamp(14px, 4vw, 22px); }
+
+  .profile__thumb {
+    width: clamp(140px, 40vw, 180px);
+  }
+  .profile__name { font-size: 1rem; }
+
+  .ghost-btn {
+    font-size: .85rem;
+    padding: 10px 18px;
+    letter-spacing: .2em;
+    min-height: 40px;
+  }
+}
+
+/* ---------- Player chrome compact (≤720px or portrait) ---------- */
+@media (max-width: 720px), (orientation: portrait) and (max-width: 900px) {
+  .play-btn { font-size: 1rem; padding: 14px 22px 14px 18px; }
+
+  /* Top bar: compact, smaller title and icons */
+  .player__top {
+    padding: 14px var(--gutter);
+    gap: 10px;
+  }
+  .player__title {
+    font-size: 1.2rem;
+    letter-spacing: .06em;
+  }
+  .player__title .ep {
+    font-size: .58em;
+    letter-spacing: .12em;
+    margin-right: .4em;
+  }
+  .iconbtn {
+    width: 40px;
+    height: 40px;
+  }
+  .iconbtn svg { width: 20px; height: 20px; }
+  .player__top-right { gap: 6px; }
+
+  /* Center cluster: tighter spacing, smaller buttons */
+  .center-cluster { gap: 32px; }
+  .cc-seek { width: 56px; height: 56px; }
+  .cc-play { width: 70px; height: 70px; border-width: 1.5px; }
+
+  /* Progress bar — push above the bottombar so they don't overlap */
+  .progress {
+    bottom: 96px;
+    gap: 10px;
+  }
+  .progress__time {
+    font-size: .85rem;
+    min-width: 44px;
+  }
+
+  /* Bottom toolbar — icons only, no text labels (no horizontal overflow) */
+  .bottombar {
+    gap: 14px;
+    padding: 12px var(--gutter) 18px;
+  }
+  .bb-btn {
+    padding: 10px 14px;
+    min-width: 44px;
+    font-size: .85rem;
+  }
+  .bb-btn span { display: none; }
+  .bb-btn--primary { padding: 10px 16px; }
+  .bb-btn--primary span {
+    display: inline;        /* keep "Next Episode" label on the primary action */
+    font-size: .85rem;
+  }
+  .bb-btn svg { width: 20px; height: 20px; }
+
+  /* Drawer (Episodes list) full-width on mobile */
+  .drawer { width: min(100vw, 420px); }
+}

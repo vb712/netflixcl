@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#000000" />
+  <title>Netflix &mdash; Who&rsquo;s watching?</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&display=swap" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body data-page="landing">
+  <!-- Netflix logo splash — plays once on app open, then fades out -->
+  <video class="splash" id="splash" autoplay muted playsinline preload="auto" aria-hidden="true">
+    <source src="YTDown_YouTube_Netflix-New-Logo-Animation-2019_Media_GV3HUDMQ-F8_002_720p.mp4" type="video/mp4" />
+  </video>
+
+  <header class="brand" aria-label="Netflix">
+    <div class="brand__logo" aria-hidden="true">NETFLIX</div>
+  </header>
+
+  <main class="landing">
+    <h1 class="landing__title">Who&rsquo;s watching?</h1>
+
+    <ul class="profiles" id="profiles" role="list"></ul>
+
+    <button class="ghost-btn" type="button">Manage Profiles</button>
+  </main>
+
+  <!-- Loading overlay: cinematic N intro -->
+  <div class="loader" id="loader" aria-hidden="true">
+    <div class="loader__stage">
+      <span class="bar bar--left"></span>
+      <span class="bar bar--diag"></span>
+      <span class="bar bar--right"></span>
+      <span class="streak streak--1"></span>
+      <span class="streak streak--2"></span>
+      <span class="streak streak--3"></span>
+      <span class="streak streak--4"></span>
+      <span class="streak streak--5"></span>
+    </div>
+    <div class="loader__flash" aria-hidden="true"></div>
+  </div>
+
+  <script src="script.js" defer></script>
+</body>
+</html>

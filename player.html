@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#000000" />
+  <title>Netflix &mdash; Player</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&display=swap" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body data-page="player">
+  <main class="player" id="player">
+    <div class="stage" id="stage" aria-label="Background slideshow"></div>
+    <div class="vignette" aria-hidden="true"></div>
+    <div class="grain" aria-hidden="true"></div>
+    <!-- Edge-glow: 4 strips sized exactly to the letterbox so the halo
+         physically can't bleed onto the photo. Gradient runs from
+         transparent at the viewport edge → solid at the frame edge,
+         so the brightest band sits right against the photo (NCS halo). -->
+    <div class="beat-glow" id="beatglow" aria-hidden="true">
+      <div class="beat-glow__strip beat-glow__strip--left"  ></div>
+      <div class="beat-glow__strip beat-glow__strip--right" ></div>
+      <div class="beat-glow__strip beat-glow__strip--top"   ></div>
+      <div class="beat-glow__strip beat-glow__strip--bottom"></div>
+    </div>
+    <div class="beat-flash" id="flash" aria-hidden="true"></div>
+
+    <!-- Initial center play (only shown before user starts) -->
+    <button class="play-btn" id="play" type="button" aria-label="Play">
+      <span class="play-btn__icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M7 4.5v15l13-7.5z" fill="currentColor"/></svg>
+      </span>
+      <span class="play-btn__label">Play</span>
+    </button>
+
+    <!-- Netflix-style chrome: only shown once playback has started.
+         All these elements live behind .chrome and fade together. -->
+    <div class="chrome" id="chrome" aria-hidden="true">
+      <header class="player__top">
+        <a class="iconbtn back" href="index.html" aria-label="Back to profiles">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 6l-6 6 6 6" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+        <h1 class="player__title" id="title">&nbsp;</h1>
+        <div class="player__top-right">
+          <button class="iconbtn" id="mute" type="button" aria-label="Mute audio">
+            <svg class="i-on"  viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10v4h4l5 4V6L7 10H3zm13.5 2a4.5 4.5 0 00-2.5-4v8a4.5 4.5 0 002.5-4z" fill="currentColor"/></svg>
+            <svg class="i-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10v4h4l5 4V6L7 10H3zm12 1l3-3 1.4 1.4L16.4 12l3 3L18 16.4l-3-3-3 3L10.6 15l3-3-3-3L12 7.6l3 3z" fill="currentColor"/></svg>
+          </button>
+          <button class="iconbtn" id="cast" type="button" aria-label="Cast">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6v3a8 8 0 018 8h3A11 11 0 003 6zm0 5v3a3 3 0 013 3h3a6 6 0 00-6-6zm0 5v3h3a3 3 0 00-3-3zM21 4H5a2 2 0 00-2 2v2h2V6h16v12h-7v2h7a2 2 0 002-2V6a2 2 0 00-2-2z" fill="currentColor"/></svg>
+          </button>
+          <button class="iconbtn" id="fullscreen" type="button" aria-label="Fullscreen">
+            <svg class="i-on"  viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5v2H6v3H4zm11-5h5v5h-2V6h-3V4zM4 15h2v3h3v2H4v-5zm14 0h2v5h-5v-2h3v-3z" fill="currentColor"/></svg>
+            <svg class="i-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4v5H4V7h3V4h2zm6 0h2v3h3v2h-5V4zM4 17h5v3H7v-2H4v-1zm14 0v1h-3v2h-2v-3h5z" fill="currentColor"/></svg>
+          </button>
+        </div>
+      </header>
+
+      <!-- Big center cluster: ⏮10  pause/play  ⏭10 -->
+      <div class="center-cluster">
+        <button class="cc-seek" id="seek-back" type="button" aria-label="Previous slide">
+          <svg viewBox="0 0 32 32" aria-hidden="true">
+            <path d="M14 9l-7 7 7 7v-4l-3-3 3-3z" fill="currentColor"/>
+            <path d="M22 9l-7 7 7 7v-4l-3-3 3-3z" fill="currentColor"/>
+            <text x="16" y="29" text-anchor="middle" font-size="7" font-weight="700" fill="currentColor" font-family="Inter, sans-serif">10</text>
+          </svg>
+        </button>
+
+        <button class="cc-play" id="pause" type="button" aria-label="Pause">
+          <svg class="i-on"  viewBox="0 0 32 32" aria-hidden="true"><path d="M9 6h5v20H9zM18 6h5v20h-5z" fill="currentColor"/></svg>
+          <svg class="i-off" viewBox="0 0 32 32" aria-hidden="true"><path d="M10 6v20l16-10z" fill="currentColor"/></svg>
+        </button>
+
+        <button class="cc-seek" id="seek-fwd" type="button" aria-label="Next slide">
+          <svg viewBox="0 0 32 32" aria-hidden="true">
+            <path d="M10 9l7 7-7 7v-4l3-3-3-3z" fill="currentColor"/>
+            <path d="M18 9l7 7-7 7v-4l3-3-3-3z" fill="currentColor"/>
+            <text x="16" y="29" text-anchor="middle" font-size="7" font-weight="700" fill="currentColor" font-family="Inter, sans-serif">10</text>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Progress bar + timestamp (display-only — scrubbing is disabled) -->
+      <div class="progress" id="progress">
+        <div class="progress__track" id="ptrack" aria-hidden="true">
+          <div class="progress__fill" id="pfill"></div>
+        </div>
+        <span class="progress__time" id="ptime">0:00</span>
+      </div>
+
+      <nav class="bottombar" id="bottombar" aria-label="Episode controls">
+        <button class="bb-btn" type="button" id="ep-list">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18v3H3zm0 5h18v3H3zm0 5h12v3H3z" fill="currentColor"/></svg>
+          <span>Episodes</span>
+        </button>
+        <button class="bb-btn" type="button" id="ep-audio">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V8a2 2 0 012-2zm2 6h4v2H6v-2zm6 0h6v2h-6v-2z" fill="currentColor"/></svg>
+          <span>Audio &amp; Subtitles</span>
+        </button>
+        <button class="bb-btn bb-btn--primary" type="button" id="next-ep">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4l11 8-11 8V4zm13 1h2v14h-2V5z" fill="currentColor"/></svg>
+          <span>Next Episode</span>
+        </button>
+      </nav>
+    </div>
+
+    <!-- Episodes drawer (toggled by Episodes button) -->
+    <div class="drawer" id="drawer" aria-hidden="true">
+      <div class="drawer__head">
+        <h2>Episodes</h2>
+        <button class="iconbtn" id="drawer-close" type="button" aria-label="Close">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+      <ul class="drawer__list" id="drawer-list"></ul>
+    </div>
+
+    <audio id="audio" preload="auto" crossorigin="anonymous"></audio>
+  </main>
+
+  <script src="script.js" defer></script>
+</body>
+</html>
