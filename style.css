@@ -1,5 +1,5 @@
 /* =========================================================================
-  Katya-inspired cinematic player
+  Netflix-inspired cinematic player
    - index.html : profile selection + N loader overlay
    - player.html: per-season slideshow + audio
    ========================================================================= */
@@ -71,7 +71,7 @@ a { color: inherit; text-decoration: none; }
 }
 
 /* ===========================================================================
-  SPLASH — Katya logo animation on page load
+  SPLASH — Netflix logo animation on page load
    =========================================================================== */
 .splash {
   position: fixed;
@@ -967,7 +967,7 @@ body[data-season="spring"] .slide.is-leaving {
   to   { opacity: 1; letter-spacing: .08em; transform: none;          filter: blur(0); }
 }
 
-/* ---------- Center cluster (Katya-style ⏮10  ⏯  ⏭10) ---------- */
+/* ---------- Center cluster (Netflix-style ⏮10  ⏯  ⏭10) ---------- */
 .center-cluster {
   position: absolute;
   left: 50%;
