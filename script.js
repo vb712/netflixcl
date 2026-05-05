@@ -1,5 +1,5 @@
 /* =========================================================================
-   Netflix-inspired cinematic player — controller
+  Katya-inspired cinematic player — controller
    - Landing : profile pick → loader → redirect to player.html?p=<season>
    - Player  : per-season slideshow with crossfade/Ken-Burns + audio
    ========================================================================= */
@@ -147,7 +147,7 @@
     const main   = document.querySelector(".landing");
     const splash = document.getElementById("splash");
 
-    // Netflix logo splash — plays once on page open, then fades out.
+    // Katya logo splash — plays once on page open, then fades out.
     if (splash) {
       const dismiss = () => {
         if (splash.classList.contains("is-done")) return;
@@ -256,10 +256,10 @@
     const fsBtn     = document.getElementById("fullscreen");
     const beatGlow  = document.getElementById("beatglow");
 
-    // Title in Netflix-style "S1:E# — NAME"
+    // Title in Katya-style "S1:E# — NAME"
     const epIdx = SEASON_ORDER.indexOf(key) + 1;
     titleEl.innerHTML = `<span class="ep">S1:E${epIdx}</span>${season.title}`;
-    document.title = `Netflix — ${season.title}`;
+    document.title = `Katya — ${season.title}`;
 
     // Set per-slide CSS variable so animations sync to season pace
     document.documentElement.style.setProperty("--slide-duration", `${season.slideMs}ms`);
@@ -775,7 +775,7 @@
       }
     });
 
-    // ----- Idle auto-hide for chrome (Netflix-style) -----
+    // ----- Idle auto-hide for chrome (Katya-style) -----
     let idleTimer = null;
     const IDLE_MS = 1500;
     function nudgeChrome() {
