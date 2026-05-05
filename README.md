@@ -26,6 +26,16 @@ Then open `http://localhost:8000`.
 
 The project is linked to Vercel and the live site is available at `https://katya-jade.vercel.app`.
 
+## Disclaimer
+
+This is a personal fan project for creative and non-commercial use.
+
+All names, images, music, logos, and other referenced materials belong to their respective owners and artists.
+
+This repository does not claim ownership of third-party content and is not affiliated with Netflix or any artist, label, or production company.
+
+If you are the rights holder and want something removed or changed, please open an issue or contact the repository owner.
+
 ## Notes
 
 - The site uses local media assets, so keep the folder structure intact.

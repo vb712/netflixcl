@@ -6,6 +6,10 @@
 (() => {
   "use strict";
 
+  console.info(
+    "Fan-project disclaimer: this site is for personal, non-commercial use. All third-party names, logos, music, and images belong to their respective owners."
+  );
+
   /* -----------------------------------------------------------------------
      SEASON CATALOG
      Maps profile → folder, audio, ordered media list.
