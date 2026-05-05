@@ -27,17 +27,10 @@
     </div>
     <div class="beat-flash" id="flash" aria-hidden="true"></div>
 
-    <!-- Initial center play (only shown before user starts) -->
-    <button class="play-btn" id="play" type="button" aria-label="Play">
-      <span class="play-btn__icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24"><path d="M7 4.5v15l13-7.5z" fill="currentColor"/></svg>
-      </span>
-      <span class="play-btn__label">Play</span>
-    </button>
-
-    <!-- Netflix-style chrome: only shown once playback has started.
-         All these elements live behind .chrome and fade together. -->
-    <div class="chrome" id="chrome" aria-hidden="true">
+    <!-- Netflix-style chrome: visible from the start. The cc-play button
+         doubles as the initial play (data-paused="true" shows the play
+         icon) and subsequent pause/resume (toggles to pause icon). -->
+    <div class="chrome" id="chrome" aria-hidden="false">
       <header class="player__top">
         <a class="iconbtn back" href="index.html" aria-label="Back to profiles">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 6l-6 6 6 6" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -68,7 +61,7 @@
           </svg>
         </button>
 
-        <button class="cc-play" id="pause" type="button" aria-label="Pause">
+        <button class="cc-play" id="pause" type="button" aria-label="Play" data-paused="true">
           <svg class="i-on"  viewBox="0 0 32 32" aria-hidden="true"><path d="M9 6h5v20H9zM18 6h5v20h-5z" fill="currentColor"/></svg>
           <svg class="i-off" viewBox="0 0 32 32" aria-hidden="true"><path d="M10 6v20l16-10z" fill="currentColor"/></svg>
         </button>

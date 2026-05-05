@@ -1012,6 +1012,7 @@ body[data-season="spring"] .slide.is-leaving {
   transform: scale(1.06);
   border-color: rgba(255,255,255,.45);
 }
+.cc-play .i-off { display: none; }            /* hide play icon by default */
 .cc-play[data-paused="true"] .i-on  { display: none; }
 .cc-play[data-paused="true"] .i-off { display: block; }
 @keyframes ccPulse {
@@ -1256,15 +1257,15 @@ body[data-season="fall"] {
   --beat-glow-strength: .12;
 }
 body[data-season="winter"] {
-  --season-accent: #ff1744;
-  --season-tint: linear-gradient(180deg, rgba(20,30,50,.40) 0%, rgba(80,0,20,.18) 60%, rgba(0,0,0,.55) 100%);
+  --season-accent: #4dabff;       /* cold winter blue — drives glow + progress fill */
+  --season-tint: linear-gradient(180deg, rgba(20,40,80,.40) 0%, rgba(30,80,160,.18) 60%, rgba(0,0,0,.55) 100%);
   --season-saturate: 1.10;
   --season-contrast: 1.30;
   --season-brightness: 0.92;
   --season-sepia: 0;
   --season-hue: -6deg;
   --beat-flash-strength: .05;
-  --beat-flash-color: #ff5566;
+  --beat-flash-color: #b6dcff;    /* pale icy flash */
   --beat-glow-base: .03;
   --beat-glow-strength: .10;
 }
@@ -1338,11 +1339,16 @@ body[data-season="spring"] {
 @media (max-width: 720px), (orientation: portrait) and (max-width: 900px) {
   .play-btn { font-size: 1rem; padding: 14px 22px 14px 18px; }
 
-  /* Top bar: compact, smaller title and icons */
+  /* Top bar: compact, smaller title and icons. Grid is 1fr-auto-1fr so
+     the title sits in true visual center regardless of how many icons
+     are on the right (mute / cast / fullscreen). */
   .player__top {
+    grid-template-columns: 1fr auto 1fr;
     padding: 14px var(--gutter);
     gap: 10px;
   }
+  .player__top-right { justify-self: end; }
+  .player__top .back { justify-self: start; }
   .player__title {
     font-size: 1.2rem;
     letter-spacing: .06em;

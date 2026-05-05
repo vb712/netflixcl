@@ -21,6 +21,11 @@
       slideMs: 3750,            // = 60000/128 * 8
       transitionMs: 900,
       beat: false,
+      // Bieber's full song is 3–4 min while the reel finishes in ~75s.
+      // End the episode the moment the reel wraps so we don't replay
+      // the same shots three times. Other seasons omit this flag and
+      // play through the full audio instead.
+      endOnReelWrap: true,
       audio: "Justin Bieber - Beauty And A Beat (Official Music Video) ft. Nicki Minaj.mp3",
       audioStartSec: 43,        // skip into the chorus
       thumb: "IMG_9249.JPG.jpeg",
@@ -45,7 +50,7 @@
     },
 
     fall: {
-      title: "Fall",
+      title: "Spring",                  // label swapped per user request
       tagline: "Soft. Golden. Cozy.",
       folder: "edit2",
       bpm: 86,
@@ -103,7 +108,7 @@
     },
 
     spring: {
-      title: "Spring",
+      title: "Fall",                    // label swapped per user request
       tagline: "Fast. Energetic. Beat-driven.",
       folder: "edit4",
       bpm: 155,
@@ -125,7 +130,14 @@
     }
   };
 
-  const SEASON_ORDER = ["summer", "fall", "winter", "spring"];
+  // Display order: Spring → Summer → Fall → Winter.
+  // Keys are unchanged (fall = "Spring" content per the earlier label
+  // swap; spring = "Fall" content). The order array drives:
+  //   • landing-page profile grid
+  //   • drawer episode list
+  //   • S1:E# numbering in the title
+  //   • Next Episode cycling + auto-advance on song end / reel wrap
+  const SEASON_ORDER = ["fall", "summer", "spring", "winter"];
 
   /* Build a usable URL for an asset that may contain spaces, #, parens. */
   const assetUrl = (folder, file) =>
@@ -234,9 +246,11 @@
     const player    = document.getElementById("player");
     const stage     = document.getElementById("stage");
     const titleEl   = document.getElementById("title");
-    const playBtn   = document.getElementById("play");
     const chrome    = document.getElementById("chrome");
     const pauseBtn  = document.getElementById("pause");
+    // .cc-play in the center cluster doubles as the initial play button
+    // and the subsequent pause/resume toggle. There's no separate play-btn.
+    const playBtn   = pauseBtn;
     const muteBtn   = document.getElementById("mute");
     const seekBack  = document.getElementById("seek-back");
     const seekFwd   = document.getElementById("seek-fwd");
@@ -325,26 +339,27 @@
     audio.volume = 0;
 
     // Skip to a per-season cue point (e.g. into the drop, chorus, etc.)
+    // We re-attempt the seek on multiple readiness events because hosts
+    // like Vercel sometimes serve the audio with delayed metadata, so a
+    // single loadedmetadata seek can fail silently and leave the song
+    // playing from 0:00.
     const startSec = Number(season.audioStartSec) || 0;
+    function seekIfNeeded() {
+      if (startSec <= 0) return;
+      if (Math.abs(audio.currentTime - startSec) <= 1) return;
+      try { audio.currentTime = startSec; } catch (_) {}
+    }
     if (startSec > 0) {
-      const seekToStart = () => {
-        try { audio.currentTime = startSec; } catch (_) {}
-      };
-      audio.addEventListener("loadedmetadata", seekToStart, { once: true });
-      if (audio.readyState >= 1) seekToStart();
+      audio.addEventListener("loadedmetadata", seekIfNeeded);
+      audio.addEventListener("canplay", seekIfNeeded);
+      audio.addEventListener("loadeddata", seekIfNeeded);
+      if (audio.readyState >= 1) seekIfNeeded();
     }
 
-    // Auto-advance to the next episode when the song finishes — same
-    // page-out fade as the Next Episode button.
+    // Auto-advance to the next episode when the song finishes.
     audio.addEventListener("ended", () => {
       if (!started || paused) return;
-      const cur = SEASON_ORDER.indexOf(key);
-      const nxt = SEASON_ORDER[(cur + 1) % SEASON_ORDER.length];
-      document.body.classList.add("is-leaving");
-      stopBeats();
-      setTimeout(() => {
-        window.location.href = `player.html?p=${encodeURIComponent(nxt)}`;
-      }, 540);
+      triggerNextEpisode();
     });
 
     // ----- Slideshow controller -----
@@ -435,8 +450,32 @@
         next = (next + 1) % slides.length;
         safety -= 1;
       } while (safety > 0 && slides[next] && slides[next].dataset.broken === "true");
+
+      // If the reel wrapped back to the start AND this season opted in
+      // (endOnReelWrap), end the episode now instead of looping the
+      // slideshow under the same song. Seasons without the flag let
+      // the reel keep cycling until audio.ended fires.
+      if (next < idx && started && !paused && season.endOnReelWrap) {
+        triggerNextEpisode();
+        return;
+      }
+
       idx = next;
       showSlide(idx);
+    }
+
+    // Cycle to the next season — used by Next Episode button, the
+    // audio.ended handler, and the slideshow-wrap auto-advance above.
+    function triggerNextEpisode() {
+      const cur = SEASON_ORDER.indexOf(key);
+      const nxt = SEASON_ORDER[(cur + 1) % SEASON_ORDER.length];
+      document.body.classList.add("is-leaving");
+      try { audio.pause(); } catch (_) {}
+      stopBeats();
+      clearTimeout(slideTimer);
+      setTimeout(() => {
+        window.location.replace(`player.html?p=${encodeURIComponent(nxt)}`);
+      }, 540);
     }
 
     function showSlide(i) {
@@ -571,29 +610,32 @@
       }
     }
 
-    // ----- Play button -----
-    playBtn.addEventListener("click", startExperience);
-
+    // ----- Initial play (handled by pauseBtn click below) -----
     function startExperience() {
       if (started) return;
       started = true;
 
-      playBtn.classList.add("is-hidden");
-      chrome.setAttribute("aria-hidden", "false");
+      // Chrome is already visible from page load — just flip the
+      // pause-button icon from "play" to "pause" and start the
+      // idle-hide countdown.
       pauseBtn.dataset.paused = "false";
-      nudgeChrome(); // start the 3-second idle countdown
+      pauseBtn.setAttribute("aria-label", "Pause");
+      nudgeChrome();
 
-      // Fade audio in over 1.5s. If metadata hadn't loaded in time and the
-      // cue-point hasn't applied yet, force it now.
+      // Fade audio in over 1.5s. We seek BEFORE play, AFTER the play
+      // promise resolves, AND on the first canplay — covering hosts
+      // (Vercel, S3) that delay metadata so the cue-point doesn't get
+      // dropped on the floor.
       audio.muted = false;
-      if (startSec > 0 && audio.currentTime < startSec - 1) {
-        try { audio.currentTime = startSec; } catch (_) {}
-      }
+      seekIfNeeded();
       const target = 0.75;
       const steps = 30;
       const stepMs = 50;
       let i = 0;
-      audio.play().catch(() => { /* user can retry via mute toggle */ });
+      const playPromise = audio.play();
+      if (playPromise && typeof playPromise.then === "function") {
+        playPromise.then(seekIfNeeded).catch(() => {});
+      }
       const fade = setInterval(() => {
         i += 1;
         audio.volume = Math.min(target, (i / steps) * target);
@@ -684,12 +726,17 @@
       return h > 0 ? `${h}:${pad(m)}:${pad(sec)}` : `${m}:${pad(sec)}`;
     }
     audio.addEventListener("timeupdate", () => {
-      const dur = audio.duration;
-      const cur = audio.currentTime;
-      const pct = dur && isFinite(dur) ? (cur / dur) * 100 : 0;
+      const dur     = audio.duration;
+      const cur     = audio.currentTime;
+      // Report timestamp + progress RELATIVE to the per-season cue
+      // point so e.g. the Bieber clip reads 0:00 at the start of the
+      // chorus instead of 0:43.
+      const elapsed = Math.max(0, cur - startSec);
+      const total   = dur && isFinite(dur) ? Math.max(0, dur - startSec) : 0;
+      const pct     = total > 0 ? (elapsed / total) * 100 : 0;
       pfill.style.width = pct + "%";
       if (pthumb) pthumb.style.left = pct + "%";
-      ptime.textContent = fmtTime(cur);
+      ptime.textContent = fmtTime(elapsed);
 
       // Toggle "is-slow-phase" when in a tempoPhase window. CSS uses
       // this to swap from snappy linear cuts → dreamy long crossfade.
@@ -699,7 +746,7 @@
       }
     });
     audio.addEventListener("loadedmetadata", () => {
-      ptime.textContent = fmtTime(audio.currentTime);
+      ptime.textContent = fmtTime(Math.max(0, audio.currentTime - startSec));
     });
     // (Progress bar is intentionally display-only — scrubbing is disabled.)
 
@@ -724,7 +771,7 @@
           document.body.classList.add("is-leaving");
           try { audio.pause(); } catch (_) {}
           setTimeout(() => {
-            window.location.href = `player.html?p=${encodeURIComponent(k)}`;
+            window.location.replace(`player.html?p=${encodeURIComponent(k)}`);
           }, 480);
         });
         drawerList.append(item);
@@ -790,17 +837,23 @@
       window.addEventListener(evt, nudgeChrome, { passive: true });
     });
 
-    // ----- Next Episode (cycle through seasons with smooth fade-out) -----
+    // ----- Next Episode (manual click) — same path as auto-advance. -----
     if (nextBtn) {
-      nextBtn.addEventListener("click", () => {
-        const cur = SEASON_ORDER.indexOf(key);
-        const nxt = SEASON_ORDER[(cur + 1) % SEASON_ORDER.length];
-        // Smoothly fade page out, then navigate
+      nextBtn.addEventListener("click", triggerNextEpisode);
+    }
+
+    // ----- Back to homepage — also replace so browser back goes one
+    // step before index, not back through the season chain. -----
+    const backLink = document.querySelector(".back");
+    if (backLink) {
+      backLink.addEventListener("click", (e) => {
+        e.preventDefault();
         document.body.classList.add("is-leaving");
         try { audio.pause(); } catch (_) {}
+        stopBeats();
         setTimeout(() => {
-          window.location.href = `player.html?p=${encodeURIComponent(nxt)}`;
-        }, 540);
+          window.location.replace("index.html");
+        }, 480);
       });
     }
 
