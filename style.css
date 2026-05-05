@@ -1409,38 +1409,47 @@ body[data-season="spring"] {
    cast button (dummy anyway), shrink icons + title, and tighten gaps
    so mute + fullscreen stay perfectly centred in the right column. */
 @media (max-width: 400px) {
+  /* Drop the grid entirely on tiny mobile and use plain flex. iOS
+     Safari has a known quirk where a flex child inside a grid cell
+     can collapse its intrinsic width mid-render, leaving the icons
+     visually mis-aligned even though devtools shows them centred.
+     Plain flex with space-between sidesteps the bug. */
   .player__top {
+    display: flex !important;
+    grid-template-columns: none;
+    align-items: center;
+    justify-content: space-between;
     padding: 10px 12px;
     gap: 6px;
   }
-  /* Use flex (not inline-flex) and explicitly centre on both axes so
-     iOS Safari can't fall back to start-alignment. justify-self goes
-     from `end` (flush right edge) to `center` so the icons sit in
-     the visual middle of their grid column instead of pinned to the
-     viewport edge. */
-  .player__top-right {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    justify-self: center;
-    gap: 4px;
-  }
-  .iconbtn {
-    width: 36px;
-    height: 36px;
-    flex-shrink: 0;
-  }
-  .iconbtn svg { width: 18px; height: 18px; }
+  .player__top .back { flex: 0 0 auto; }
   .player__title {
+    flex: 1 1 auto;
+    text-align: center;
+    margin: 0 6px;
     font-size: 1rem;
     letter-spacing: .04em;
+    min-width: 0;             /* let the title shrink instead of pushing icons */
   }
   .player__title .ep {
     font-size: .55em;
     letter-spacing: .1em;
     margin-right: .35em;
   }
+  .player__top-right {
+    display: flex !important;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    flex: 0 0 auto;
+  }
+  .iconbtn {
+    width: 36px;
+    height: 36px;
+    flex: 0 0 36px;           /* lock dimensions, can't be squashed */
+  }
+  .iconbtn svg { width: 18px; height: 18px; }
   /* Cast is a dummy on web — hide it on the smallest viewports so
-     mute + fullscreen have room to centre cleanly. */
-  #cast { display: none; }
+     mute + fullscreen have room to align cleanly. */
+  #cast { display: none !important; }
 }
