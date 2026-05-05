@@ -1346,8 +1346,9 @@ body[data-season="spring"] {
     grid-template-columns: 1fr auto 1fr;
     padding: 14px var(--gutter);
     gap: 10px;
+    align-items: center;
   }
-  .player__top-right { justify-self: end; }
+  .player__top-right { justify-self: end; align-items: center; }
   .player__top .back { justify-self: start; }
   .player__title {
     font-size: 1.2rem;
@@ -1400,4 +1401,34 @@ body[data-season="spring"] {
 
   /* Drawer (Episodes list) full-width on mobile */
   .drawer { width: min(100vw, 420px); }
+}
+
+/* ---------- Tight mobile (≤400px / iPhone 12 mini, SE, etc.) ----------
+   Three top-right icons + title + back at 40px buttons just doesn't
+   fit, which throws the 1fr-auto-1fr grid off-balance. We drop the
+   cast button (dummy anyway), shrink icons + title, and tighten gaps
+   so mute + fullscreen stay perfectly centred in the right column. */
+@media (max-width: 400px) {
+  .player__top {
+    padding: 10px 12px;
+    gap: 6px;
+  }
+  .player__top-right { gap: 4px; }
+  .iconbtn {
+    width: 36px;
+    height: 36px;
+  }
+  .iconbtn svg { width: 18px; height: 18px; }
+  .player__title {
+    font-size: 1rem;
+    letter-spacing: .04em;
+  }
+  .player__title .ep {
+    font-size: .55em;
+    letter-spacing: .1em;
+    margin-right: .35em;
+  }
+  /* Cast is a dummy on web — hide it on the smallest viewports so
+     mute + fullscreen have room to centre cleanly. */
+  #cast { display: none; }
 }
