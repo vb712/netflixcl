@@ -1413,10 +1413,22 @@ body[data-season="spring"] {
     padding: 10px 12px;
     gap: 6px;
   }
-  .player__top-right { gap: 4px; }
+  /* Use flex (not inline-flex) and explicitly centre on both axes so
+     iOS Safari can't fall back to start-alignment. justify-self goes
+     from `end` (flush right edge) to `center` so the icons sit in
+     the visual middle of their grid column instead of pinned to the
+     viewport edge. */
+  .player__top-right {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    justify-self: center;
+    gap: 4px;
+  }
   .iconbtn {
     width: 36px;
     height: 36px;
+    flex-shrink: 0;
   }
   .iconbtn svg { width: 18px; height: 18px; }
   .player__title {

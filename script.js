@@ -31,7 +31,10 @@
       // play through the full audio instead.
       endOnReelWrap: true,
       audio: "Justin Bieber - Beauty And A Beat (Official Music Video) ft. Nicki Minaj.mp3",
-      audioStartSec: 43,        // skip into the chorus
+      // audioStartSec removed — the source file is already trimmed so
+      // playback naturally begins at the chorus. Timer reads 0:00 on
+      // load; the rest of the player flow (endOnReelWrap auto-advance,
+      // pause/resume, seek-prev/next) is unchanged.
       thumb: "IMG_9249.JPG.jpeg",
       media: [
         // Vevo intro — 6s cap, 1.5× speed. Tighter than before so it
